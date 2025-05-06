@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   Container, 
   Typography, 
@@ -12,7 +11,8 @@ import {
   FormControl, 
   InputLabel, 
   Select, 
-  MenuItem 
+  MenuItem,
+  CircularProgress 
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles"; // Corrected import for useTheme
 import { CalculatorIcon, RefreshCcw, Landmark } from "lucide-react"; // Added Landmark for currency icon
@@ -28,9 +28,8 @@ const LoanCalculator = () => {
   const [loanAmount, setLoanAmount] = useState<number>(100000);
   const [interestRate, setInterestRate] = useState<number>(8.5);
   const [loanTerm, setLoanTerm] = useState<number>(5);
-  // Store the originally calculated EMI and the currency it was calculated in (assume USD for simplicity or app's initial currency)
-  const [baseCalculatedEmi, setBaseCalculatedEmi] = useState<number | null>(null);
-  const [baseEmiCurrency, setBaseEmiCurrency] = useState<string>('USD'); // Or derive from initial currentCurrency
+  // No longer need baseEmiCurrency state, as loan input is always USD, so EMI from hook is always USD.
+  const [isCalculatingLoan, setIsCalculatingLoan] = useState<boolean>(false);
 
   // Use the custom hook for calculation logic and state
   const {
@@ -45,45 +44,48 @@ const LoanCalculator = () => {
   const { 
     currentCurrency, 
     changeCurrency, 
-    convertAmount, 
-    // exchangeRates: allExchangeRates, // This is still available if needed directly
+    convertAmount,
     isLoading: ratesLoading, 
     allAvailableCurrencies // Use the new dynamic list from context
   } = useCurrency();
   const theme = useTheme(); // Get the theme object
 
-  const handleCalculate = () => {
-    try {
-      // Call the hook's calculation function
-      calculateLoanDetails({
-        principal: loanAmount,
-        annualRate: interestRate,
-        tenureYears: loanTerm,
-      });
-      // After calculateLoanDetails, the `emi` from the hook will be updated.
-      // We assume the hook's `emi` is calculated as if the inputs were in a base currency (e.g., USD).
-      // Or, if your hook's `emi` is already in the `currentCurrency`, this logic might differ.
-      // For this example, let's assume the hook's `emi` is the raw calculated value.
-      if (emi !== null && !calculationError) { // Check if hook's calculation was successful
+  // This effect handles the aftermath of the calculation triggered by `calculateLoanDetails`
+  useEffect(() => {
+    // Only act if a calculation was started and the hook has finished processing
+    if (isCalculatingLoan && hasCalculated) {
+      if (emi !== null && !calculationError) {
         toast.success("EMI and Amortization Schedule Calculated!");
-        setBaseCalculatedEmi(emi); // Store the raw EMI from the hook
+        // Set current display currency to USD after successful calculation
+        if (currentCurrency !== 'USD') {
+          changeCurrency('USD');
+        }
       }
-
-    } catch (error) {
-      console.error("Calculation error:", error);
-      // This catch block might be redundant if the hook handles errors robustly
-      // but can be kept for unexpected errors outside the hook's scope.
-      toast.error("An unexpected error occurred. Please check console.");
+      // If there's a calculationError, the Alert component will display it.
+      setIsCalculatingLoan(false); // Calculation process is complete (success or error)
     }
+  }, [isCalculatingLoan, hasCalculated, emi, calculationError, toast, changeCurrency, currentCurrency]);
+
+  const handleCalculate = () => {
+    setIsCalculatingLoan(true);
+    // Loan amount is USD, so emi from hook will be in USD.
+    // Call the hook's calculation function.
+    // The hook will update its `emi`, `amortizationSchedule`, `hasCalculated`, `calculationError`.
+    // The useEffect above will react to these changes.
+    calculateLoanDetails({
+      principal: loanAmount,
+      annualRate: interestRate,
+      tenureYears: loanTerm,
+    });
   };
 
   const handleReset = () => {
     resetLoanDetails(); // Use the hook's reset function
     // Reset form fields to initial or desired default values
     setLoanAmount(100000);
-    setBaseCalculatedEmi(null);
     setInterestRate(8.5);
     setLoanTerm(5);
+    setIsCalculatingLoan(false); // Stop any loading indication
     toast.info("Inputs and calculations have been reset.");
   };
 
@@ -99,7 +101,7 @@ const LoanCalculator = () => {
             <Grid item xs={12} md={4}>
               <TextField
                 id="loanAmount"
-                label="Loan Amount"
+                label="Loan Amount (USD)"
                 type="number"
                 fullWidth
                 variant="outlined"
@@ -136,33 +138,43 @@ const LoanCalculator = () => {
             </Grid>
           </Grid>
           
-          <Box sx={{ mt: 3, display: "flex", justifyContent: "center" }}>
+          <Box sx={{ mt: 3, display: "flex", justifyContent: "center", alignItems: "center" }}>
             <Button 
               variant="contained" 
               size="large"
               onClick={handleCalculate}
+              disabled={isCalculatingLoan} // Disable button while calculating
               startIcon={<CalculatorIcon size={20} style={{ color: 'white' }} />} // Icon color white
               sx={{
                 bgcolor: theme.palette.primary.dark, // Purple background (same as light mode nav)
                 color: 'white', // Text color white
                 fontWeight: 'bold', // Bold text
                 '&:hover': {
-                  bgcolor: theme.palette.primary.main, // Slightly lighter purple on hover
-                }
+                  bgcolor: !isCalculatingLoan ? theme.palette.primary.main : undefined, // Slightly lighter purple on hover, if not disabled
+                },
+                mr: isCalculatingLoan ? 2 : 0 // Add margin if loading indicator is present
               }}
             >
               CALCULATE
             </Button>
+            {isCalculatingLoan && <CircularProgress size={24} />}
           </Box>
         </CardContent>
       </Card>
       
-      {hasCalculated && !calculationError && baseCalculatedEmi !== null && (
+      {isCalculatingLoan && (
+        <Box sx={{ textAlign: 'center', my: 4 }}>
+          <CircularProgress />
+          <Typography variant="h6" sx={{ mt: 1 }}>Calculating your EMI...</Typography>
+        </Box>
+      )}
+
+      {!isCalculatingLoan && hasCalculated && emi !== null && !calculationError && (
         <>
           <Box sx={{ mb: 4 }}>
             <Typography variant="h4" gutterBottom fontWeight="bold" sx={{ display: 'flex', alignItems: 'center' }}>
-              <Landmark size={30} style={{ marginRight: theme.spacing(1) }} />
-              Monthly EMI: {formatCurrency(convertAmount(baseCalculatedEmi, baseEmiCurrency, currentCurrency), currentCurrency)}
+              {/* EMI from hook is in USD, convert to current display currency */}
+              Monthly EMI: {formatCurrency(convertAmount(emi, 'USD', currentCurrency), currentCurrency)}
             </Typography>
             {ratesLoading && <Typography variant="caption" sx={{ ml: 1 }}>(Updating rates...)</Typography>}
             
@@ -220,10 +232,10 @@ const LoanCalculator = () => {
                   </TableHead>
                   <TableBody>
                     {amortizationSchedule.map((payment) => {
-                      // Assuming payment.principalPayment, etc., are in baseEmiCurrency from the hook
-                      const principalDisplay = convertAmount(payment.principalPayment, baseEmiCurrency, currentCurrency);
-                      const interestDisplay = convertAmount(payment.interestPayment, baseEmiCurrency, currentCurrency);
-                      const balanceDisplay = convertAmount(payment.remainingBalance, baseEmiCurrency, currentCurrency);
+                      // payment.principalPayment, etc., from hook are in USD. Convert to current display currency.
+                      const principalDisplay = convertAmount(payment.principalPayment, 'USD', currentCurrency);
+                      const interestDisplay = convertAmount(payment.interestPayment, 'USD', currentCurrency);
+                      const balanceDisplay = convertAmount(payment.remainingBalance, 'USD', currentCurrency);
                       return (
                       <TableRow key={payment.month}>
                         <TableCell>{payment.month}</TableCell>
@@ -240,7 +252,7 @@ const LoanCalculator = () => {
           </Card>
         </>
       )}
-      {hasCalculated && calculationError && (
+      {!isCalculatingLoan && hasCalculated && calculationError && (
         <Alert severity="error" sx={{ mt: 2 }}>
           {calculationError}
         </Alert>
