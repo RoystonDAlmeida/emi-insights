@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 500 300" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background shape -->
+  <rect x="50" y="50" width="400" height="200" rx="40" ry="40" fill="#8a2be2" />
+  
+  <!-- Inner highlight for depth -->
+  <rect x="60" y="60" width="380" height="180" rx="35" ry="35" fill="#9932cc" />
+  
+  <!-- Circular insights icon -->
+  <circle cx="130" cy="150" r="50" fill="white" />
+  
+  <!-- Insight chart lines -->
+  <path d="M100,170 L120,140 L140,155 L160,130" stroke="#8a2be2" stroke-width="6" stroke-linecap="round" fill="none" />
+  <circle cx="100" cy="170" r="5" fill="#8a2be2" />
+  <circle cx="120" cy="140" r="5" fill="#8a2be2" />
+  <circle cx="140" cy="155" r="5" fill="#8a2be2" />
+  <circle cx="160" cy="130" r="5" fill="#8a2be2" />
+  
+  <!-- EMI text -->
+  <text x="200" y="140" font-family="Arial, sans-serif" font-size="50" font-weight="bold" fill="white">EMI</text>
+  
+  <!-- Insights text -->
+  <text x="200" y="190" font-family="Arial, sans-serif" font-size="50" font-weight="bold" fill="white">Insights</text>
+  
+  <!-- Glowing effect -->
+  <circle cx="130" cy="150" r="60" fill="url(#glow)" />
+  
+  <!-- Definitions -->
+  <defs>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5" fx="0.5" fy="0.5">
+      <stop offset="70%" stop-color="rgba(255,255,255,0)" />
+      <stop offset="100%" stop-color="rgba(255,255,255,0.3)" />
+    </radialGradient>
+  </defs>
+</svg>
