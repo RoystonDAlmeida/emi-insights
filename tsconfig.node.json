@@ -4,19 +4,23 @@
     "lib": ["ES2023"],
     "module": "ESNext",
     "skipLibCheck": true,
-
-    /* Bundler mode */
-    "moduleResolution": "bundler",
+    
+    /* API compatibility settings */
+    "moduleResolution": "Node", // Changed from "bundler" to "Node"
     "allowImportingTsExtensions": true,
     "isolatedModules": true,
     "moduleDetection": "force",
-    "noEmit": true,
-
+    "noEmit": false, // Changed from true to false to allow emission of compiled JS
+    "outDir": "dist", // Add output directory for compiled files
+    
     /* Linting */
     "strict": true,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+    
+    /* ES Module compatibility */
+    "esModuleInterop": true
   },
-  "include": ["vite.config.ts"]
+  "include": ["vite.config.ts", "api/**/*.ts"] // Added API directory
 }
