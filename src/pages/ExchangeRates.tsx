@@ -17,15 +17,18 @@ import { useCurrency } from "@/context/CurrencyContext";
 const ITEMS_PER_PAGE = 10;
 
 const ExchangeRates = () => {
-  const { currentCurrency, exchangeRates, isLoading: ratesLoading } = useCurrency();
+  const { 
+    currentCurrency, 
+    exchangeRates, 
+    isLoading: ratesLoading, 
+    allAvailableCurrencies // Destructure the dynamic list from context
+  } = useCurrency();
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Use all keys from the fetched exchangeRates object if available, otherwise fall back to predefined availableCurrencies
-  const allPossibleCurrencies = exchangeRates ? Object.keys(exchangeRates) : availableCurrencies;
-  
   // Filter currencies based on search term
-  const filteredCurrencies = allPossibleCurrencies.filter(currency => 
+  // Use allAvailableCurrencies from the context, which is already derived from exchangeRates or defaults
+  const filteredCurrencies = allAvailableCurrencies.filter(currency => 
     currency.toLowerCase().includes(search.toLowerCase())
   );
   
