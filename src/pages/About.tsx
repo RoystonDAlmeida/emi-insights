@@ -42,7 +42,9 @@ const About = () => {
         <CardContent className="pt-6">
           <ul className="list-disc pl-6 space-y-2">
             <li><strong>React</strong> (Hooks, Routing, Context API)</li>
-            <li><strong>Material UI</strong> for styling and responsive components</li>
+            <li>
+              Hybrid UI with <strong>Material UI (MUI)</strong> for its comprehensive component library and responsive grid, complemented by <strong>Shadcn UI</strong> (leveraging Tailwind CSS and Radix UI) for modern, accessible, and highly customizable components.
+            </li>
             <li><strong>Axios</strong> for API calls</li>
             <li><strong>Exchange Rate API</strong> for real-time currency conversion</li>
           </ul>
