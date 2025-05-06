@@ -13,42 +13,64 @@ import {
   InputLabel, 
   Select, 
   MenuItem 
-} from "@mui/material"; // Import useTheme
-import { useTheme } from "@mui/material";
+} from "@mui/material";
+import { useTheme } from "@mui/material/styles"; // Corrected import for useTheme
 import { CalculatorIcon, RefreshCcw } from "lucide-react";
-import { calculateEMI, generateAmortizationSchedule, formatCurrency } from "@/utils/financial";
+import { formatCurrency } from "@/utils/financial"; // calculateEMI & generateAmortizationSchedule will be used by the hook
 import { useCurrency, availableCurrencies } from "@/context/CurrencyContext";
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from "@mui/material";
+import { useLoanDetails, AmortizationEntry } from "@/hooks/useLoanDetails"; // Import the custom hook and its types
+import { toast } from "sonner"; // Assuming you use sonner for toasts
+import { Alert } from "@mui/material"; // For displaying errors
 
 const LoanCalculator = () => {
+  // Local state for form inputs
   const [loanAmount, setLoanAmount] = useState<number>(100000);
   const [interestRate, setInterestRate] = useState<number>(8.5);
   const [loanTerm, setLoanTerm] = useState<number>(5);
-  const [emi, setEmi] = useState<number>(0);
-  const [amortizationSchedule, setAmortizationSchedule] = useState<Array<any>>([]);
-  const [hasCalculated, setHasCalculated] = useState<boolean>(false);
+
+  // Use the custom hook for calculation logic and state
+  const {
+    emi,
+    amortizationSchedule,
+    calculationError,
+    hasCalculated,
+    calculateLoanDetails,
+    resetLoanDetails
+  } = useLoanDetails();
+
   const { currentCurrency, changeCurrency } = useCurrency();
   const theme = useTheme(); // Get the theme object
 
   const handleCalculate = () => {
     try {
-      // Calculate EMI
-      const calculatedEmi = calculateEMI(loanAmount, interestRate, loanTerm);
-      setEmi(calculatedEmi);
-      
-      // Generate amortization schedule
-      const schedule = generateAmortizationSchedule(loanAmount, interestRate, loanTerm);
-      setAmortizationSchedule(schedule);
-      
-      setHasCalculated(true);
+      // Call the hook's calculation function
+      calculateLoanDetails({
+        principal: loanAmount,
+        annualRate: interestRate,
+        tenureYears: loanTerm,
+      });
+      // Toast notification can remain here or be moved into the hook if desired
+      // For now, let's assume the hook doesn't handle toasts directly.
+      if (!calculationError) { // Check if hook's calculation was successful before toasting success
+        toast.success("EMI and Amortization Schedule Calculated!");
+      }
+
     } catch (error) {
       console.error("Calculation error:", error);
+      // This catch block might be redundant if the hook handles errors robustly
+      // but can be kept for unexpected errors outside the hook's scope.
+      toast.error("An unexpected error occurred. Please check console.");
     }
   };
 
   const handleReset = () => {
-    setAmortizationSchedule([]);
-    setHasCalculated(false);
+    resetLoanDetails(); // Use the hook's reset function
+    // Reset form fields to initial or desired default values
+    setLoanAmount(100000);
+    setInterestRate(8.5);
+    setLoanTerm(5);
+    toast.info("Inputs and calculations have been reset.");
   };
 
   return (
@@ -121,7 +143,7 @@ const LoanCalculator = () => {
         </CardContent>
       </Card>
       
-      {hasCalculated && (
+      {hasCalculated && !calculationError && emi !== null && (
         <>
           <Box sx={{ mb: 4 }}>
             <Typography variant="h4" gutterBottom fontWeight="bold">
@@ -182,8 +204,8 @@ const LoanCalculator = () => {
                     {amortizationSchedule.map((payment) => (
                       <TableRow key={payment.month}>
                         <TableCell>{payment.month}</TableCell>
-                        <TableCell>{formatCurrency(payment.principal, currentCurrency)}</TableCell>
-                        <TableCell>{formatCurrency(payment.interest, currentCurrency)}</TableCell>
+                        <TableCell>{formatCurrency(payment.principalPayment, currentCurrency)}</TableCell>
+                        <TableCell>{formatCurrency(payment.interestPayment, currentCurrency)}</TableCell>
                         <TableCell>{formatCurrency(payment.remainingBalance, currentCurrency)}</TableCell>
                       </TableRow>
                     ))}
@@ -193,6 +215,11 @@ const LoanCalculator = () => {
             </CardContent>
           </Card>
         </>
+      )}
+      {hasCalculated && calculationError && (
+        <Alert severity="error" sx={{ mt: 2 }}>
+          {calculationError}
+        </Alert>
       )}
     </Container>
   );
