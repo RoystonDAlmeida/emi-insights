@@ -15,9 +15,9 @@ import {
   MenuItem 
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles"; // Corrected import for useTheme
-import { CalculatorIcon, RefreshCcw } from "lucide-react";
-import { formatCurrency } from "@/utils/financial"; // calculateEMI & generateAmortizationSchedule will be used by the hook
-import { useCurrency, availableCurrencies } from "@/context/CurrencyContext";
+import { CalculatorIcon, RefreshCcw, Landmark } from "lucide-react"; // Added Landmark for currency icon
+import { formatCurrency } from "@/utils/financial";
+import { useCurrency } from "@/context/CurrencyContext"; // Removed availableCurrencies import
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from "@mui/material";
 import { useLoanDetails, AmortizationEntry } from "@/hooks/useLoanDetails"; // Import the custom hook and its types
 import { toast } from "sonner"; // Assuming you use sonner for toasts
@@ -28,6 +28,9 @@ const LoanCalculator = () => {
   const [loanAmount, setLoanAmount] = useState<number>(100000);
   const [interestRate, setInterestRate] = useState<number>(8.5);
   const [loanTerm, setLoanTerm] = useState<number>(5);
+  // Store the originally calculated EMI and the currency it was calculated in (assume USD for simplicity or app's initial currency)
+  const [baseCalculatedEmi, setBaseCalculatedEmi] = useState<number | null>(null);
+  const [baseEmiCurrency, setBaseEmiCurrency] = useState<string>('USD'); // Or derive from initial currentCurrency
 
   // Use the custom hook for calculation logic and state
   const {
@@ -39,7 +42,14 @@ const LoanCalculator = () => {
     resetLoanDetails
   } = useLoanDetails();
 
-  const { currentCurrency, changeCurrency } = useCurrency();
+  const { 
+    currentCurrency, 
+    changeCurrency, 
+    convertAmount, 
+    // exchangeRates: allExchangeRates, // This is still available if needed directly
+    isLoading: ratesLoading, 
+    allAvailableCurrencies // Use the new dynamic list from context
+  } = useCurrency();
   const theme = useTheme(); // Get the theme object
 
   const handleCalculate = () => {
@@ -50,10 +60,13 @@ const LoanCalculator = () => {
         annualRate: interestRate,
         tenureYears: loanTerm,
       });
-      // Toast notification can remain here or be moved into the hook if desired
-      // For now, let's assume the hook doesn't handle toasts directly.
-      if (!calculationError) { // Check if hook's calculation was successful before toasting success
+      // After calculateLoanDetails, the `emi` from the hook will be updated.
+      // We assume the hook's `emi` is calculated as if the inputs were in a base currency (e.g., USD).
+      // Or, if your hook's `emi` is already in the `currentCurrency`, this logic might differ.
+      // For this example, let's assume the hook's `emi` is the raw calculated value.
+      if (emi !== null && !calculationError) { // Check if hook's calculation was successful
         toast.success("EMI and Amortization Schedule Calculated!");
+        setBaseCalculatedEmi(emi); // Store the raw EMI from the hook
       }
 
     } catch (error) {
@@ -68,6 +81,7 @@ const LoanCalculator = () => {
     resetLoanDetails(); // Use the hook's reset function
     // Reset form fields to initial or desired default values
     setLoanAmount(100000);
+    setBaseCalculatedEmi(null);
     setInterestRate(8.5);
     setLoanTerm(5);
     toast.info("Inputs and calculations have been reset.");
@@ -143,12 +157,14 @@ const LoanCalculator = () => {
         </CardContent>
       </Card>
       
-      {hasCalculated && !calculationError && emi !== null && (
+      {hasCalculated && !calculationError && baseCalculatedEmi !== null && (
         <>
           <Box sx={{ mb: 4 }}>
-            <Typography variant="h4" gutterBottom fontWeight="bold">
-              Monthly EMI: {formatCurrency(emi, currentCurrency)}
+            <Typography variant="h4" gutterBottom fontWeight="bold" sx={{ display: 'flex', alignItems: 'center' }}>
+              <Landmark size={30} style={{ marginRight: theme.spacing(1) }} />
+              Monthly EMI: {formatCurrency(convertAmount(baseCalculatedEmi, baseEmiCurrency, currentCurrency), currentCurrency)}
             </Typography>
+            {ratesLoading && <Typography variant="caption" sx={{ ml: 1 }}>(Updating rates...)</Typography>}
             
             <Box sx={{ 
               display: "flex", 
@@ -166,9 +182,10 @@ const LoanCalculator = () => {
                   label="Currency"
                   onChange={(e) => changeCurrency(e.target.value)}
                 >
-                  {availableCurrencies.map(currency => (
-                    <MenuItem key={currency} value={currency}>
-                      {currency}
+                  {/* Populate dropdown with allAvailableCurrencies from context */}
+                  {allAvailableCurrencies.map(currencyCode => (
+                    <MenuItem key={currencyCode} value={currencyCode}>
+                      {currencyCode}
                     </MenuItem>
                   ))}
                 </Select>
@@ -189,26 +206,33 @@ const LoanCalculator = () => {
               <Typography variant="h5" gutterBottom fontWeight="bold">
                 Amortization Schedule ({currentCurrency})
               </Typography>
+              {ratesLoading && <Typography variant="caption" sx={{ ml: 1 }}>(Updating rates for schedule...)</Typography>}
               
               <TableContainer component={Paper} sx={{ maxHeight: 400 }}>
                 <Table stickyHeader>
                   <TableHead>
                     <TableRow>
                       <TableCell>Month</TableCell>
-                      <TableCell>Principal</TableCell>
-                      <TableCell>Interest</TableCell>
-                      <TableCell>Remaining Balance</TableCell>
+                      <TableCell>Principal ({currentCurrency})</TableCell>
+                      <TableCell>Interest ({currentCurrency})</TableCell>
+                      <TableCell>Remaining Balance ({currentCurrency})</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {amortizationSchedule.map((payment) => (
+                    {amortizationSchedule.map((payment) => {
+                      // Assuming payment.principalPayment, etc., are in baseEmiCurrency from the hook
+                      const principalDisplay = convertAmount(payment.principalPayment, baseEmiCurrency, currentCurrency);
+                      const interestDisplay = convertAmount(payment.interestPayment, baseEmiCurrency, currentCurrency);
+                      const balanceDisplay = convertAmount(payment.remainingBalance, baseEmiCurrency, currentCurrency);
+                      return (
                       <TableRow key={payment.month}>
                         <TableCell>{payment.month}</TableCell>
-                        <TableCell>{formatCurrency(payment.principalPayment, currentCurrency)}</TableCell>
-                        <TableCell>{formatCurrency(payment.interestPayment, currentCurrency)}</TableCell>
-                        <TableCell>{formatCurrency(payment.remainingBalance, currentCurrency)}</TableCell>
+                        <TableCell>{formatCurrency(principalDisplay, currentCurrency)}</TableCell>
+                        <TableCell>{formatCurrency(interestDisplay, currentCurrency)}</TableCell>
+                        <TableCell>{formatCurrency(balanceDisplay, currentCurrency)}</TableCell>
                       </TableRow>
-                    ))}
+                    );
+                    })}
                   </TableBody>
                 </Table>
               </TableContainer>
