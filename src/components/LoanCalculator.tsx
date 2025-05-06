@@ -98,7 +98,7 @@ const LoanCalculator = () => {
       <Card sx={{ mb: 6 }}>
         <CardContent>
           <Grid container spacing={3}>
-            <Grid item xs={12} md={4}>
+            <Grid xs={12} md={4}>
               <TextField
                 id="loanAmount"
                 label="Loan Amount (USD)"
@@ -111,7 +111,7 @@ const LoanCalculator = () => {
               />
             </Grid>
             
-            <Grid item xs={12} md={4}>
+            <Grid xs={12} md={4}>
               <TextField
                 id="interestRate"
                 label="Interest Rate (%)"
@@ -124,7 +124,7 @@ const LoanCalculator = () => {
               />
             </Grid>
             
-            <Grid item xs={12} md={4}>
+            <Grid xs={12} md={4}>
               <TextField
                 id="loanTerm"
                 label="Term (Years)"
@@ -193,6 +193,13 @@ const LoanCalculator = () => {
                   value={currentCurrency}
                   label="Currency"
                   onChange={(e) => changeCurrency(e.target.value)}
+                  MenuProps={{
+                    PaperProps: {
+                      style: {
+                        maxHeight: 250, // Adjust this value as needed (e.g., 5 items * 48px/item + padding)
+                      },
+                    },
+                  }}
                 >
                   {/* Populate dropdown with allAvailableCurrencies from context */}
                   {allAvailableCurrencies.map(currencyCode => (
