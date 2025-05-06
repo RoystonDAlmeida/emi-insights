@@ -1,18 +1,26 @@
 import { useQuery } from '@tanstack/react-query';
+import axios, { AxiosError } from 'axios';
 
 // The URL for your serverless function
 const SERVERLESS_FUNCTION_URL = '/api/getExchangeRates'; 
 
 const fetchExchangeRatesFromServerless = async (baseCurrency: string): Promise<Record<string, number>> => {
-  // Call your serverless function
-  const response = await fetch(`${SERVERLESS_FUNCTION_URL}?base=${baseCurrency}`); 
-  if (!response.ok) {
-    const errorData = await response.json();
-    // Use the error message provided by your serverless function
-    throw new Error(errorData.error || 'Failed to fetch exchange rates from serverless function');
+  try {
+    // Call your serverless function using axios
+    const response = await axios.get(SERVERLESS_FUNCTION_URL, {
+      params: { base: baseCurrency },
+    });
+    // The serverless function is designed to return just the conversion_rates
+    // Axios automatically parses JSON, so response.data contains the parsed body
+    return response.data; 
+  } catch (error) {
+    const axiosError = error as AxiosError;
+    // Try to get a specific error message from the serverless function's response
+    // The serverless function might return an error object like { error: "message" }
+    const serverErrorMessage = (axiosError.response?.data as { error?: string })?.error;
+    // Fallback to axios's error message or a generic one
+    throw new Error(serverErrorMessage || axiosError.message || 'Failed to fetch exchange rates from serverless function');
   }
-  // The serverless function is designed to return just the conversion_rates
-  return response.json(); 
 };
 
 export const useExchangeRates = (baseCurrency: string = 'USD') => {
