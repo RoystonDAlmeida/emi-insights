@@ -29,7 +29,6 @@ const Navigation = () => {
     { name: "HOME", path: "/" },
     { name: "EXCHANGE RATES (LIVE)", path: "/exchange-rates" },
     { name: "ABOUT", path: "/about" },
-    { name: "ERROR PAGE", path: "/error-demo" }
   ];
   
   const isActive = (path: string) => location.pathname === path;
