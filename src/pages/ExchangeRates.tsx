@@ -12,7 +12,7 @@ import {
   PaginationNext,
   PaginationPrevious
 } from "@/components/ui/pagination";
-import { useCurrency, availableCurrencies } from "@/context/CurrencyContext";
+import { useCurrency } from "@/context/CurrencyContext";
 
 const ITEMS_PER_PAGE = 10;
 
